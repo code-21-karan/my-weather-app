@@ -1,0 +1,40 @@
+import streamlit as st
+import requests
+
+# App ka Title
+st.title("🌤️ Live Weather App")
+
+# User se city ka naam lena
+city = st.text_input("Apne City ka naam likhein:", "Delhi")
+
+# Weather API URL (Open-Meteo use kar rahe hain jo bilkul free hai aur key nahi chahiye)
+# Pehle city ke coordinates (Latitude/Longitude) nikalne ke liye Geocoding API
+geo_url = f"https://geocoding-api.open-meteo.com/v1/search?name={city}&count=1&language=en&format=json"
+
+if st.button("Mausam Dekhein"):
+    try:
+        geo_response = requests.get(geo_url).json()
+        
+        if "results" in geo_response:
+            lat = geo_response["results"][0]["latitude"]
+            lon = geo_response["results"][0]["longitude"]
+            location_name = geo_response["results"][0]["name"]
+            country = geo_response["results"][0].get("country", "")
+
+            # Asli weather data fetch karna
+            weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true"
+            weather_response = requests.get(weather_url).json()
+            
+            current_weather = weather_response["current_weather"]
+            temp = current_weather["temperature"]
+            windspeed = current_weather["windspeed"]
+
+            # Screen par mausam dikhana
+            st.success(f"📍 Location: {location_name}, {country}")
+            st.metric(label="🌡️ Temperature", value=f"{temp} °C")
+            st.metric(label="💨 Wind Speed", value=f"{windspeed} km/h")
+        else:
+            st.error("Oops! Is naam ki koi city nahi mili. Kripya sahi naam likhein.")
+            
+    except Exception as e:
+        st.error("Internet ya server mein koi dikkat hai. Kripya baad mein check karein.")
