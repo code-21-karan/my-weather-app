@@ -132,4 +132,65 @@ if st.button("Mausam Ka Haal Dekhein"):
             m1.markdown(f"<div class='metric-box'>💧 <b>Humidity (Nami)</b><br><h2>{current['relative_humidity_2m']}%</h2></div>", unsafe_allow_html=True)
             m2.markdown(f"<div class='metric-box'>🌧️ <b>Precipitation (Baarish Prob.)</b><br><h2>{prob_rain}%</h2></div>", unsafe_allow_html=True)
             m3.markdown(f"<div class='metric-box'>💨 <b>Live Wind Speed</b><br><h2>{current['wind_speed_10m']} km/h</h2></div>", unsafe_allow_html=True)
-            m4.markdown(f"<div class='metric-box'>🧭 <b>Air Pressure</b><br><h2>{int(current
+            m4.markdown(f"<div class='metric-box'>🧭 <b>Air Pressure</b><br><h2>{int(current['surface_pressure'])} mb</h2></div>", unsafe_allow_html=True)
+
+            st.markdown("---")
+
+            # --- ROW 3: WIND & HOURLY FORECAST ---
+            st.subheader("💨 Wind Forecast & Hourly Overview (Agla 12 Ghante)")
+            hourly_slots = st.columns(6)
+            for i, col in enumerate(hourly_slots):
+                idx = current_hour_idx + (i * 2)
+                if idx < len(data["hourly"]["temperature_2m"]):
+                    time_raw = data["hourly"]["time"][idx].split("T")[1]
+                    temp_h = data["hourly"]["temperature_2m"][idx]
+                    wind_h = data["hourly"]["wind_speed_10m"][idx]
+                    rain_p = data["hourly"]["precipitation_probability"][idx]
+                    
+                    col.markdown(f"""
+                    <div class='metric-box' style='background-color:#f8fafc;'>
+                        <span style='color:gray; font-size:12px;'>⏱️ {time_raw}</span><br>
+                        <b>{temp_h}°C</b><br>
+                        <span style='font-size:13px; color:#0284c7;'>🌧️ Rain: {rain_p}%</span><br>
+                        <span style='font-size:13px; color:#475569;'>💨 Wind: {wind_h}kph</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+            st.markdown("---")
+
+            # --- ROW 4: 5-DAY CALENDAR FORECAST ---
+            st.subheader("📅 Weather Calendar (Aage Ke 5 Din Ka Forecast)")
+            daily_slots = st.columns(5)
+            
+            for i, col in enumerate(daily_slots):
+                date_str = data["daily"]["time"][i]
+                date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+                day_display = date_obj.strftime("%A, %d %b")
+                
+                max_temp = data["daily"]["temperature_2m_max"][i]
+                min_temp = data["daily"]["temperature_2m_min"][i]
+                rain_sum = data["daily"]["precipitation_sum"][i]
+                day_code = data["daily"]["weather_code"][i]
+                day_status = weather_codes.get(day_code, "🌤️").split(" ")[0]
+                
+                col.markdown(f"""
+                <div class='metric-box' style='border-top: 4px solid #3b82f6;'>
+                    <h5>{day_display}</h5>
+                    <h2 style='margin:10px 0;'>{day_status}</h2>
+                    <p style='color:#ef4444; margin:2px 0;'>🔺 Max: {max_temp}°C</p>
+                    <p style='color:#3b82f6; margin:2px 0;'>🔻 Min: {min_temp}°C</p>
+                    <span style='font-size:12px; background-color:#e0f2fe; padding:2px 6px; border-radius:4px; color:#0369a1;'>🌧️ {rain_sum} mm</span>
+                </div>
+                """, unsafe_allow_html=True)
+                
+        else:
+            st.error("Sheher ka naam sahi nahi hai.")
+    except Exception as e:
+        st.error("Data connect karne mein dikkat aa rahi hai.")
+
+# --- PERSISTENT DEVELOPER FOOTER ---
+st.markdown("""
+    <div class='footer'>
+        👨‍💻 Developed with ❤️ by Karan
+    </div>
+""", unsafe_allow_html=True)
