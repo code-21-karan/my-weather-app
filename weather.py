@@ -1,3 +1,4 @@
+
 import streamlit as st
 import requests
 from datetime import datetime
@@ -31,7 +32,19 @@ st.markdown("""
     .aqi-mod { color: #b45309; font-weight: bold; }
     .aqi-poor { color: #b91c1c; font-weight: bold; }
     
-    /* Developer Footer Styling */
+    /* Top Developer Badge */
+    .dev-badge {
+        background-color: #0284c7;
+        color: white;
+        padding: 6px 12px;
+        font-size: 14px;
+        font-weight: bold;
+        border-radius: 20px;
+        display: inline-block;
+        margin-bottom: 10px;
+    }
+    
+    /* Developer Footer Styling with Copyright */
     .footer {
         position: relative;
         left: 0;
@@ -41,8 +54,7 @@ st.markdown("""
         color: white;
         text-align: center;
         padding: 15px;
-        font-size: 16px;
-        font-weight: bold;
+        font-size: 15px;
         border-radius: 10px;
         margin-top: 40px;
         box-shadow: 0px -4px 10px rgba(0, 0, 0, 0.1);
@@ -50,6 +62,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# Top Welcome Brand / Owner Name
+st.markdown("<div class='dev-badge'>👨‍💻 Karan's Official App</div>", unsafe_allow_html=True)
 st.title("🗺️ Ultimate Live Weather & Road Dashboard")
 
 # City Input
@@ -188,9 +202,9 @@ if st.button("Mausam Ka Haal Dekhein"):
     except Exception as e:
         st.error("Data connect karne mein dikkat aa rahi hai.")
 
-# --- PERSISTENT DEVELOPER FOOTER ---
+# --- PERSISTENT DEVELOPER FOOTER WITH ALL RIGHTS RESERVED ---
 st.markdown("""
     <div class='footer'>
-        👨‍💻 Developed with ❤️ by Karan
+        © 2026 Karan. All Rights Reserved. | Developed with ❤️ by Karan Roy
     </div>
 """, unsafe_allow_html=True)
