@@ -2,31 +2,41 @@ import streamlit as st
 import requests
 from datetime import datetime
 
-# Page Design
-st.set_page_config(page_title="Weather Dashboard", page_icon="🌤️", layout="wide")
+# Page Setup (Wide layout taaki bada dashboard bane)
+st.set_page_config(page_title="Ultimate Weather Dashboard", page_icon="🌤️", layout="wide")
 
-# Custom CSS styling text ko sundar dikhane ke liye
+# Custom UI Styling (Sundar cards aur badges ke liye)
 st.markdown("""
     <style>
-    .main-card { background-color: #f0f4f9; padding: 20px; border-radius: 15px; margin-bottom: 20px; }
-    .forecast-card { background-color: #ffffff; padding: 15px; border-radius: 10px; text-align: center; border: 1px solid #e1e8ed; }
+    .main-card { background-color: #f1f5f9; padding: 20px; border-radius: 12px; border: 1px solid #cbd5e1; }
+    .metric-box { background-color: #ffffff; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+    .aqi-good { color: #15803d; font-weight: bold; }
+    .aqi-mod { color: #b45309; font-weight: bold; }
+    .aqi-poor { color: #b91c1c; font-weight: bold; }
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🌦️ Weather Dashboard")
+st.title("🗺️ Ultimate Live Weather & Road Dashboard")
 
 # City Input
 city = st.text_input("Apne City ka naam likhein:", "Ludhiana")
 
-# API Keys/URLs
+# Geocoding API (City coordinates nikalne ke liye)
 geo_url = f"https://geocoding-api.open-meteo.com/v1/search?name={city}&count=1&language=en&format=json"
 
+# Detailed Weather Codes Map
 weather_codes = {
-    0: "☀️ Clear sky", 1: "🌤️ Mainly clear", 2: "⛅ Partly sunny", 3: "☁️ Overcast",
-    45: "🌫️ Fog", 48: "🌫️ Fog", 51: "🌧️ Drizzle", 61: "🌧️ Rain", 71: "❄️ Snow", 95: "⛈️ Thunderstorm"
+    0: "☀️ Clear sky (Ekdum Saaf)", 1: "🌤️ Mainly clear", 2: "⛅ Partly sunny", 3: "☁️ Overcast (Badal chaye hain)",
+    45: "🌫️ Fog (Dhund)", 48: "🌫️ Rime fog", 51: "🌧️ Drizzle (Boonda-baandi)", 61: "🌧️ Light Rain (Baarish)", 
+    63: "🌧️ Moderate Rain", 65: "🌧️ Heavy Rain (Tez Baarish)", 80: "🌧️ Rain Showers", 95: "⛈️ Thunderstorm (Garaj ke sath baarish)"
 }
 
-if st.button("Mausam Dekhein"):
+def get_aqi_status(us_aqi):
+    if us_aqi <= 50: return "🟢 Good (Hawa Saaf Hai)", "aqi-good"
+    elif us_aqi <= 100: return "🟡 Moderate (Theek-thak)", "aqi-mod"
+    else: return "🔴 Poor (Kharab Hawa)", "aqi-poor"
+
+if st.button("Mausam Ka Haal Dekhein"):
     try:
         geo_response = requests.get(geo_url).json()
         
@@ -35,84 +45,114 @@ if st.button("Mausam Dekhein"):
             lon = geo_response["results"][0]["longitude"]
             location_name = geo_response["results"][0]["name"]
             state = geo_response["results"][0].get("admin1", "")
+            country = geo_response["results"][0].get("country", "")
             
-            # Current, Hourly aur Daily saara data ek sath lana
-            weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto"
+            # 1. Weather API Call (Current, Hourly, Daily, Air Quality, Precipitation Probability)
+            weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,surface_pressure&hourly=precipitation_probability,wind_speed_10m,temperature_2m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum&timezone=auto"
             data = requests.get(weather_url).json()
             
-            # 1. CURRENT WEATHER SECTION
+            # 2. Air Quality API Call
+            aqi_url = f"https://air-quality-api.open-meteo.com/v1/air-quality?latitude={lat}&longitude={lon}&current=us_aqi"
+            aqi_data = requests.get(aqi_url).json()
+            
+            # Extract Current Data
             current = data["current"]
-            status = weather_codes.get(current["weather_code"], "🌈 Clear")
+            aqi_val = aqi_data["current"]["us_aqi"] if "current" in aqi_data else 45
+            aqi_status, aqi_class = get_aqi_status(aqi_val)
             
-            st.success(f"📍 {location_name}, {state}")
+            status_text = weather_codes.get(current["weather_code"], "🌤️ Normal")
             
-            # Layout splitting for current details
-            col1, col2 = st.columns([2, 3])
+            # Header Location
+            st.success(f"📍 Location Roadmap: {location_name}, {state}, {country} (Lat: {lat}, Lon: {lon})")
             
-            with col1:
-                st.markdown(f"### Current weather")
-                st.markdown(f"<h1>{current['temperature_2m']}°C</h1>", unsafe_allow_html=True)
-                st.markdown(f"**{status}**")
-                st.write(f"Feels like {current['apparent_temperature']}°C")
+            # --- ROW 1: CURRENT LIVE WEATHER & AIR QUALITY ---
+            col_main1, col_main2 = st.columns([3, 2])
+            
+            with col_main1:
+                st.markdown(f"""
+                <div class='main-card'>
+                    <h3>⚡ Live Current Weather</h3>
+                    <h1 style='font-size: 50px; margin: 0;'>{current['temperature_2m']}°C</h1>
+                    <p style='font-size: 20px; font-weight: bold;'>{status_text}</p>
+                    <p style='color: #64748b;'>Feels Like (Asli Ehsaas): {current['apparent_temperature']}°C</p>
+                </div>
+                """, unsafe_allow_html=True)
                 
-            with col2:
-                st.markdown("<br>", unsafe_allow_html=True)
-                c_a, c_b, c_c = st.columns(3)
-                c_a.metric("Wind", f"{current['wind_speed_10m']} km/h")
-                c_b.metric("Humidity", f"{current['relative_humidity_2m']}%")
-                c_c.metric("Pressure", f"{int(current['surface_pressure'])} mb")
+            with col_main2:
+                st.markdown(f"""
+                <div class='main-card' style='background-color: #f8fafc;'>
+                    <h3>🍃 Air Quality & Safety Day (AQI)</h3>
+                    <h2 style='margin:0;'>Index: {aqi_val}</h2>
+                    <p class='{aqi_class}' style='font-size: 18px;'>Status: {aqi_status}</p>
+                    <p style='font-size: 13px; color:#64748b;'>Road Map Alert: Outdoor activities ke liye status check karein.</p>
+                </div>
+                """, unsafe_allow_html=True)
+
+            st.markdown("<br>", unsafe_allow_html=True)
+
+            # --- ROW 2: LIVE METRICS CONTAINER ---
+            st.subheader("📊 Live Weather Details & Indicators")
+            m1, m2, m3, m4 = st.columns(4)
+            
+            # Live Baarish ki sambhavna check karne ke liye current hour ka data
+            current_hour_idx = datetime.now().hour
+            prob_rain = data["hourly"]["precipitation_probability"][current_hour_idx]
+            
+            m1.markdown(f"<div class='metric-box'>💧 <b>Humidity (Nami)</b><br><h2>{current['relative_humidity_2m']}%</h2></div>", unsafe_allow_html=True)
+            m2.markdown(f"<div class='metric-box'>🌧️ <b>Precipitation (Baarish Prob.)</b><br><h2>{prob_rain}%</h2></div>", unsafe_allow_html=True)
+            m3.markdown(f"<div class='metric-box'>💨 <b>Live Wind Speed</b><br><h2>{current['wind_speed_10m']} km/h</h2></div>", unsafe_allow_html=True)
+            m4.markdown(f"<div class='metric-box'>🧭 <b>Air Pressure</b><br><h2>{int(current['surface_pressure'])} mb</h2></div>", unsafe_allow_html=True)
 
             st.markdown("---")
-            
-            # 2. HOURLY FORECAST (Next few hours)
-            st.subheader("⏰ Hourly Overview")
-            hourly_cols = st.columns(6)
-            current_hour = datetime.now().hour
-            
-            for i, col in enumerate(hourly_cols):
-                idx = current_hour + (i * 2) # Har 2 ghante ka gap dikhane ke liye
+
+            # --- ROW 3: WIND FORECAST & HOURLY MAP ---
+            st.subheader("💨 Wind Forecast & Hourly Overview (Agla 12 Ghante)")
+            hourly_slots = st.columns(6)
+            for i, col in enumerate(hourly_slots):
+                idx = current_hour_idx + (i * 2)
                 if idx < len(data["hourly"]["temperature_2m"]):
-                    time_str = data["hourly"]["time"][idx].split("T")[1]
+                    time_raw = data["hourly"]["time"][idx].split("T")[1]
                     temp_h = data["hourly"]["temperature_2m"][idx]
-                    code_h = data["hourly"]["weather_code"][idx]
-                    status_h = weather_codes.get(code_h, "🌤️").split(" ")[0] # sirf emoji ke liye
+                    wind_h = data["hourly"]["wind_speed_10m"][idx]
+                    rain_p = data["hourly"]["precipitation_probability"][idx]
                     
-                    with col:
-                        st.markdown(f"""
-                        <div class='forecast-card'>
-                            <p style='color:gray;'>{time_str}</p>
-                            <h2>{status_h}</h2>
-                            <p><b>{temp_h}°C</b></p>
-                        </div>
-                        """, unsafe_allow_html=True)
-
-            st.markdown("---")
-
-            # 3. DAILY FORECAST (Next 5 Days)
-            st.subheader("📅 5-Day Forecast")
-            daily_cols = st.columns(5)
-            
-            for i, col in enumerate(daily_cols):
-                date_str = data["daily"]["time"][i]
-                date_obj = datetime.strptime(date_str, "%Y-%m-%d")
-                day_name = date_obj.strftime("%a\n%d") # E.g., Mon 13
-                
-                max_t = data["daily"]["temperature_2m_max"][i]
-                min_t = data["daily"]["temperature_2m_min"][i]
-                code_d = data["daily"]["weather_code"][i]
-                status_d = weather_codes.get(code_d, "🌤️").split(" ")[0]
-                
-                with col:
-                    st.markdown(f"""
-                    <div class='forecast-card'>
-                        <h4>{day_name}</h4>
-                        <h1>{status_d}</h1>
-                        <p style='color:#ff4b4b; margin:0;'>High: {max_t}°C</p>
-                        <p style='color:#0066cc; margin:0;'>Low: {min_t}°C</p>
+                    col.markdown(f"""
+                    <div class='metric-box' style='background-color:#f8fafc;'>
+                        <span style='color:gray; font-size:12px;'>⏱️ {time_raw}</span><br>
+                        <b>{temp_h}°C</b><br>
+                        <span style='font-size:13px; color:#0284c7;'>🌧️ Rain: {rain_p}%</span><br>
+                        <span style='font-size:13px; color:#475569;'>💨 Wind: {wind_h}kph</span>
                     </div>
                     """, unsafe_allow_html=True)
-                    
+
+            st.markdown("---")
+
+            # --- ROW 4: 5-DAY CALENDAR FORECAST ---
+            st.subheader("📅 Weather Calendar (Aage Ke 5 Din Ka Forecast)")
+            daily_slots = st.columns(5)
+            
+            for i, col in enumerate(daily_slots):
+                date_str = data["daily"]["time"][i]
+                date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+                day_display = date_obj.strftime("%A, %d %b") # Format: Monday, 13 Jul
+                
+                max_temp = data["daily"]["temperature_2m_max"][i]
+                min_temp = data["daily"]["temperature_2m_min"][i]
+                rain_sum = data["daily"]["precipitation_sum"][i]
+                day_code = data["daily"]["weather_code"][i]
+                day_status = weather_codes.get(day_code, "🌤️").split(" ")[0] # Emoji text
+                
+                col.markdown(f"""
+                <div class='metric-box' style='border-top: 4px solid #3b82f6;'>
+                    <h5>{day_display}</h5>
+                    <h2 style='margin:10px 0;'>{day_status}</h2>
+                    <p style='color:#ef4444; margin:2px 0;'>🔺 Max: {max_temp}°C</p>
+                    <p style='color:#3b82f6; margin:2px 0;'>🔻 Min: {min_temp}°C</p>
+                    <span style='font-size:12px; background-color:#e0f2fe; padding:2px 6px; border-radius:4px; color:#0369a1;'>🌧️ {rain_sum} mm</span>
+                </div>
+                """, unsafe_allow_html=True)
+                
         else:
-            st.error("Sheher ka naam sahi nahi hai. Kripya check karein.")
+            st.error("Sheher ka naam sahi nahi hai. Please check karke firse likhein.")
     except Exception as e:
-        st.error("Data load nahi ho pa raha hai.")
+        st.error(f"Data connect karne mein dikkat aa rahi hai. Details: {e}")
